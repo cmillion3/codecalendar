@@ -1,37 +1,53 @@
 import SwiftUI
 import SwiftData
 
-struct CreateProjectView: View {
+struct CreateTaskView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
 
     @State private var name = ""
     @State private var details = ""
     @State private var dueDate = Date()
+    @State private var effortScore = 5
+    @State private var selectedProject: Project?
+
+    let projects: [Project]
 
     var body: some View {
         NavigationStack {
             Form {
-                Section("Project Information") {
+                Section("Task Information") {
                     TextField("Name", text: $name)
                     TextField("Description", text: $details, axis: .vertical)
                         .lineLimit(3, reservesSpace: true)
                     DatePicker("Due Date", selection: $dueDate, displayedComponents: .date)
+                    Stepper("Effort Score: \(effortScore)", value: $effortScore, in: 1...10)
+                    Picker("Project", selection: $selectedProject) {
+                        Text("None").tag(Project?.none)
+                        ForEach(projects) { project in
+                            Text(project.name).tag(project as Project?)
+                        }
+                    }
                 }
             }
-            .navigationTitle("New Project")
+            .navigationTitle("New Task")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        let project = Project(
+                        let task = Task(
                             name: name,
                             details: details,
-                            dueDate: dueDate
+                            dueDate: dueDate,
+                            effortScore: effortScore
                         )
-                        modelContext.insert(project)
+                        if let project = selectedProject {
+                            task.project = project
+                            project.tasks.append(task)
+                        }
+                        modelContext.insert(task)
                         dismiss()
                     }
                     .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -42,5 +58,5 @@ struct CreateProjectView: View {
 }
 
 #Preview {
-    CreateProjectView()
+    CreateTaskView(projects: [])
 }

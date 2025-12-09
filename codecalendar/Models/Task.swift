@@ -2,28 +2,31 @@ import Foundation
 import SwiftData
 
 @Model
-final class Project {
+final class Task {
     @Attribute(.unique) var id: UUID
     var name: String
     var details: String
     var dueDate: Date
-    var createdDate: Date
-    var complete: Bool
-    @Relationship(deleteRule: .cascade) var tasks: [Task] = []
+    var effortScore: Int
+    var completed: Bool
+    var completedDate: Date?
+    var project: Project?
 
     init(
         id: UUID = UUID(),
         name: String,
         details: String,
         dueDate: Date,
-        createdDate: Date = .now,
-        complete: Bool = false
+        effortScore: Int,
+        completed: Bool = false,
+        completedDate: Date? = nil
     ) {
         self.id = id
         self.name = name
         self.details = details
         self.dueDate = dueDate
-        self.createdDate = createdDate
-        self.complete = complete
+        self.effortScore = effortScore
+        self.completed = completed
+        self.completedDate = completedDate
     }
 }

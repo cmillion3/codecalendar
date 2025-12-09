@@ -14,6 +14,6 @@ struct codecalendarApp: App {
         WindowGroup {
             HomeView()
         }
-        .modelContainer(for: Project.self)
+        .modelContainer(for: [Project.self, Task.self])
     }
 }
