@@ -9,11 +9,12 @@ import SwiftUI
 import SwiftData
 
 @main
-struct codecalendarApp: App {
+struct DevDashApp: App {
     var body: some Scene {
         WindowGroup {
-            HomeView()
+            MainTabView()
         }
         .modelContainer(for: [Project.self, Task.self])
     }
 }
+

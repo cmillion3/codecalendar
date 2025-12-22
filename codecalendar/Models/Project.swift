@@ -9,6 +9,7 @@ final class Project {
     var dueDate: Date
     var createdDate: Date
     var complete: Bool
+    var starred: Bool = false
     @Relationship(deleteRule: .cascade) var tasks: [Task] = []
 
     init(
@@ -17,7 +18,8 @@ final class Project {
         details: String,
         dueDate: Date,
         createdDate: Date = .now,
-        complete: Bool = false
+        complete: Bool = false,
+        starred: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -25,5 +27,6 @@ final class Project {
         self.dueDate = dueDate
         self.createdDate = createdDate
         self.complete = complete
+        self.starred = starred
     }
 }

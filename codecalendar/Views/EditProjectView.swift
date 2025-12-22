@@ -23,6 +23,21 @@ struct EditProjectView: View {
                     .lineLimit(3, reservesSpace: true)
                 DatePicker("Due Date", selection: $project.dueDate, displayedComponents: .date)
             }
+            Section("Status") {
+                Toggle("Completed", isOn: $project.complete)
+                HStack {
+                    Image(systemName: project.starred ? "star.fill" : "star")
+                        .foregroundColor(project.starred ? .yellow : .gray)
+                        .font(.title2)
+                    Text(project.starred ? "Starred" : "Not starred")
+                        .foregroundColor(.secondary)
+                    Spacer()
+                }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    project.starred.toggle()
+                }
+            }
         }
         .navigationTitle("Edit Project")
         .toolbar {
