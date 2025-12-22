@@ -30,3 +30,15 @@ final class Task {
         self.completedDate = completedDate
     }
 }
+
+extension Task {
+    static func toggleCompleted(_ task: Task) {
+        task.completed.toggle()
+        if task.completed {
+            task.completedDate = Date()
+        } else {
+            task.completedDate = nil
+        }
+    }
+}
+

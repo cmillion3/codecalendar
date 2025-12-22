@@ -14,7 +14,31 @@ struct HomeView: View {
     @State private var showingCreateProject = false
     @State private var showingCreateTask = false
     @State private var selectedProject: Project? = nil
-
+    
+    // Progress card: which project to show stats for
+    @State private var selectedProgressProject: Project? = nil
+    
+    // MARK: - Derived progress data
+    
+    var progressTasks: [Task] {
+        guard let project = selectedProgressProject else { return [] }
+        return project.tasks
+    }
+    
+    var completedCount: Int {
+        progressTasks.filter { $0.completed }.count
+    }
+    
+    var overdueCount: Int {
+        let now = Date()
+        return progressTasks.filter { !$0.completed && $0.dueDate < now }.count
+    }
+    
+    var dueCount: Int {
+        let now = Date()
+        return progressTasks.filter { !$0.completed && $0.dueDate >= now }.count
+    }
+    
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -24,7 +48,7 @@ struct HomeView: View {
                         .fontWeight(.bold)
                         .padding(.top)
                     
-                    // Projects Section
+                    // MARK: Projects Section
                     VStack(spacing: 8) {
                         HStack {
                             Text("Projects").font(.headline)
@@ -47,28 +71,49 @@ struct HomeView: View {
                                 .multilineTextAlignment(.center)
                                 .padding(.vertical)
                         } else {
-                            VStack(alignment: .leading, spacing: 8) {
+                            VStack(alignment: .leading, spacing: 12) {
                                 ForEach(projects) { project in
                                     NavigationLink {
                                         EditProjectView(project: project)
                                     } label: {
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            Text(project.name)
-                                                .font(.headline)
-                                            Text(project.details)
-                                                .font(.subheadline)
-                                                .foregroundColor(.secondary)
-                                            Text("Due \(project.dueDate.formatted(date: .abbreviated, time: .omitted))")
-                                                .font(.caption)
+                                        HStack(spacing: 12) {
+                                            Image(systemName: "folder")
+                                                .font(.title2)
+                                                .foregroundColor(.blue)
+                                                .frame(width: 44, height: 44)
+                                                .background(Color.blue.opacity(0.1))
+                                                .clipShape(Circle())
+                                            
+                                            VStack(alignment: .leading, spacing: 4) {
+                                                Text(project.name)
+                                                    .font(.headline)
+                                                    .lineLimit(1)
+                                                Text(project.details)
+                                                    .font(.subheadline)
+                                                    .foregroundColor(.secondary)
+                                                    .lineLimit(2)
+                                                HStack {
+                                                    Text("Due \(project.dueDate.formatted(date: .abbreviated, time: .omitted))")
+                                                        .font(.caption)
+                                                        .foregroundColor(.secondary)
+                                                    Spacer()
+                                                }
+                                            }
+                                            
+                                            Spacer()
+                                            
+                                            Image(systemName: "chevron.right")
                                                 .foregroundColor(.secondary)
                                         }
                                         .padding()
+                                        .frame(height: 72) // Fixed uniform height
                                         .background(Color(.secondarySystemBackground))
-                                        .cornerRadius(12)
+                                        .clipShape(RoundedRectangle(cornerRadius: 12))
                                     }
                                 }
                             }
                         }
+                        
                         Button {
                             showingCreateProject = true
                         } label: {
@@ -87,7 +132,76 @@ struct HomeView: View {
                     .cornerRadius(16)
                     .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
                     
-                    // Tasks Section
+                    // MARK: Progress Section
+                    VStack(spacing: 8) {
+                        HStack {
+                            Text("Progress")
+                                .font(.headline)
+                            Spacer()
+                            Picker("Project", selection: $selectedProgressProject) {
+                                Text("Select Project").tag(Project?.none)
+                                ForEach(projects) { project in
+                                    Text(project.name).tag(project as Project?)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                        }
+                        
+                        if let project = selectedProgressProject {
+                            HStack {
+                                Text(project.name)
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                            }
+                            
+                            HStack {
+                                VStack {
+                                    Text("Completed")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                    Text("\(completedCount)")
+                                        .font(.title2)
+                                        .fontWeight(.bold)
+                                }
+                                .frame(maxWidth: .infinity)
+                                
+                                VStack {
+                                    Text("Overdue")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                    Text("\(overdueCount)")
+                                        .font(.title2)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(overdueCount > 0 ? .red : .primary)
+                                }
+                                .frame(maxWidth: .infinity)
+                                
+                                VStack {
+                                    Text("Due")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                    Text("\(dueCount)")
+                                        .font(.title2)
+                                        .fontWeight(.bold)
+                                }
+                                .frame(maxWidth: .infinity)
+                            }
+                            .padding(.top, 8)
+                        } else {
+                            Text("Select a project to see its progress.")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.top, 4)
+                        }
+                    }
+                    .padding()
+                    .background(Color(.systemBackground))
+                    .cornerRadius(16)
+                    .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
+                    
+                    // MARK: Tasks Section
                     VStack(spacing: 8) {
                         HStack {
                             Text("My Tasks").font(.headline)
@@ -110,24 +224,58 @@ struct HomeView: View {
                                 .multilineTextAlignment(.center)
                                 .padding(.vertical)
                         } else {
-                            VStack(alignment: .leading, spacing: 8) {
+                            VStack(alignment: .leading, spacing: 12) {
                                 ForEach(tasks) { task in
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(task.name)
-                                            .font(.headline)
-                                        Text(task.details)
-                                            .font(.subheadline)
-                                            .foregroundColor(.secondary)
-                                        Text("Due \(task.dueDate.formatted(date: .abbreviated, time: .omitted))")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
+                                    NavigationLink {
+                                        EditTaskView(task: task)
+                                    } label: {
+                                        HStack(spacing: 12) {
+                                            Button(action: {
+                                                Task.toggleCompleted(task)
+                                            }) {
+                                                Image(systemName: task.completed ? "checkmark.circle.fill" : "circle")
+                                                    .font(.title2)
+                                                    .foregroundColor(task.completed ? .green : .secondary)
+                                            }
+                                            .buttonStyle(.plain)
+                                            
+                                            VStack(alignment: .leading, spacing: 4) {
+                                                Text(task.name)
+                                                    .font(.headline)
+                                                    .lineLimit(1)
+                                                Text(task.details)
+                                                    .font(.subheadline)
+                                                    .foregroundColor(.secondary)
+                                                    .lineLimit(2)
+                                                HStack {
+                                                    Text("Effort: \(task.effortScore)")
+                                                        .font(.caption)
+                                                        .padding(.horizontal, 6)
+                                                        .padding(.vertical, 2)
+                                                        .background(Color.gray.opacity(0.2))
+                                                        .clipShape(Capsule())
+                                                    Text("Due \(task.dueDate.formatted(date: .abbreviated, time: .omitted))")
+                                                        .font(.caption)
+                                                        .foregroundColor(.secondary)
+                                                    Spacer()
+                                                }
+                                            }
+                                            
+                                            Spacer()
+                                            
+                                            Image(systemName: "chevron.right")
+                                                .foregroundColor(.secondary)
+                                        }
+                                        .padding()
+                                        .frame(height: 72) // Fixed uniform height
+                                        .background(Color(.secondarySystemBackground))
+                                        .clipShape(RoundedRectangle(cornerRadius: 12))
                                     }
-                                    .padding()
-                                    .background(Color(.secondarySystemBackground))
-                                    .cornerRadius(12)
                                 }
                             }
+
                         }
+                        
                         Button {
                             showingCreateTask = true
                         } label: {
@@ -146,15 +294,20 @@ struct HomeView: View {
                     .cornerRadius(16)
                     .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
                     
-                    // Navigation and Sheets
-                    .sheet(isPresented: $showingCreateProject) {
-                        CreateProjectView()
-                    }
-                    .sheet(isPresented: $showingCreateTask) {
-                        CreateTaskView(projects: projects)
-                    }
+                    // ... your other sections (Projects/Goals/Portfolio/Learn card) can stay as-is ...
                 }
                 .padding()
+            }
+            .sheet(isPresented: $showingCreateProject) {
+                CreateProjectView()
+            }
+            .sheet(isPresented: $showingCreateTask) {
+                CreateTaskView(projects: projects)
+            }
+            .onAppear {
+                if selectedProgressProject == nil {
+                    selectedProgressProject = projects.first
+                }
             }
         }
     }
