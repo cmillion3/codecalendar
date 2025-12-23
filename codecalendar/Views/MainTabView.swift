@@ -5,10 +5,11 @@
 //  Created by Cameron on 12/22/25.
 //
 
-
 import SwiftUI
 
 struct MainTabView: View {
+    @AppStorage("accentColor") private var accentColor = "blue"
+    
     var body: some View {
         TabView {
             HomeView()
@@ -31,6 +32,18 @@ struct MainTabView: View {
                     Label("Settings", systemImage: "gear")
                 }
         }
-        .accentColor(.blue)
+        .tint(colorFromString(accentColor))
+    }
+    
+    private func colorFromString(_ color: String) -> Color {
+        switch color {
+        case "blue": return .blue
+        case "green": return .green
+        case "orange": return .orange
+        case "purple": return .purple
+        case "red": return .red
+        case "teal": return .teal
+        default: return .blue
+        }
     }
 }

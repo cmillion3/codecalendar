@@ -116,9 +116,9 @@ struct HomeView: View {
                                         HStack(spacing: 12) {
                                             Image(systemName: project.starred ? "star.fill" : "folder")
                                                 .font(.title2)
-                                                .foregroundColor(project.starred ? .yellow : .blue)
+                                                .foregroundColor(project.starred ? .yellow : .accentColor)
                                                 .frame(width: 44, height: 44)
-                                                .background((project.starred ? Color.yellow : Color.blue).opacity(0.12))
+                                                .background((project.starred ? Color.yellow : Color.accentColor).opacity(0.12))
                                                 .clipShape(Circle())
 
                                             VStack(alignment: .leading, spacing: 4) {
@@ -156,7 +156,7 @@ struct HomeView: View {
                             Text("Create New Project")
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 8)
-                                .background(Color.blue)
+                                .background(Color.accentColor)
                                 .foregroundColor(.white)
                                 .contentShape(Rectangle())
                         }
@@ -324,7 +324,7 @@ struct HomeView: View {
                             Text("Create New Task")
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 8)
-                                .background(Color.blue)
+                                .background(Color.accentColor)
                                 .foregroundColor(.white)
                                 .contentShape(Rectangle())
                         }
