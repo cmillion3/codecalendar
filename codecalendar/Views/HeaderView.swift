@@ -9,17 +9,25 @@
 import SwiftUI
 
 struct HeaderView: View {
+    private var formattedDate: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "E, MMMM d"
+        return formatter.string(from: Date())
+    }
+    
     var body: some View {
         HStack {
-            Image(systemName: "hammer.fill")
-                .font(.title)
-                .foregroundColor(.blue)
-            
-            Text("DevDash")
-                .font(.custom("DancingScript-Regular", size: 32))
-                .fontWeight(.bold)
-                .foregroundColor(.primary)
-            
+            Spacer()
+            VStack(spacing: 6) {
+                Text("Code Calender")
+                    .font(.system(.largeTitle, design: .serif))
+                    .italic()
+                    .fontWeight(.bold)
+                    .foregroundColor(.primary)
+                Text(formattedDate)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
             Spacer()
         }
         .padding(.top, 20)
