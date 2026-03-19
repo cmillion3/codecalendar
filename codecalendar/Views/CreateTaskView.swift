@@ -48,6 +48,12 @@ struct CreateTaskView: View {
                             project.tasks.append(task)
                         }
                         modelContext.insert(task)
+                        
+                        // Schedule notifications if enabled
+                        if UserDefaults.standard.bool(forKey: "enableOverdueAlerts") {
+                            NotificationManager.shared.scheduleTaskReminders(for: task)
+                        }
+                        
                         dismiss()
                     }
                     .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)

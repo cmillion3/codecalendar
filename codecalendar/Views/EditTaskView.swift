@@ -9,11 +9,13 @@
 import SwiftUI
 import SwiftData
 
+
 struct EditTaskView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
 
     @Bindable var task: Task      // same pattern as EditProjectView
+    
 
     @Query(sort: \Project.dueDate) private var projects: [Project]
 
@@ -47,6 +49,7 @@ struct EditTaskView: View {
 
             Section {
                 Button(role: .destructive) {
+                    NotificationManager.shared.cancelReminders(for: task)
                     modelContext.delete(task)
                     dismiss()
                 } label: {
@@ -60,8 +63,16 @@ struct EditTaskView: View {
                 Button("Cancel") { dismiss() }
             }
             ToolbarItem(placement: .confirmationAction) {
-                Button("Done") { dismiss() }
+                Button("Done") {
+                    // Cancel old reminders and schedule new ones
+                    NotificationManager.shared.cancelReminders(for: task)
+                    if UserDefaults.standard.bool(forKey: "enableOverdueAlerts") {
+                        NotificationManager.shared.scheduleTaskReminders(for: task)
+                    }
+                    dismiss()
+                }
             }
         }
     }
 }
+

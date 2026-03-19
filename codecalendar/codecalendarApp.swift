@@ -2,22 +2,26 @@
 //  codecalendarApp.swift
 //  codecalendar
 //
-//  Created by Cam on 11/20/25.
-//
 
 import SwiftUI
 import SwiftData
 
 @main
 struct DevDashApp: App {
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @AppStorage("accentColor") private var accentColor = "blue"
     @AppStorage("isDarkMode") private var isDarkMode = false
     
     var body: some Scene {
         WindowGroup {
-            MainTabView()
-                .tint(colorFromString(accentColor))
-                .preferredColorScheme(isDarkMode ? .dark : .light)
+            if !hasCompletedOnboarding {
+                OnboardingView()
+                    .preferredColorScheme(isDarkMode ? .dark : .light)
+            } else {
+                MainTabView()
+                    .tint(colorFromString(accentColor))
+                    .preferredColorScheme(isDarkMode ? .dark : .light)
+            }
         }
         .modelContainer(for: [Project.self, Task.self])
     }
@@ -30,8 +34,9 @@ struct DevDashApp: App {
         case "purple": return .purple
         case "red": return .red
         case "teal": return .teal
+        case "indigo": return .indigo
+        case "mint": return .mint
         default: return .blue
         }
     }
 }
-

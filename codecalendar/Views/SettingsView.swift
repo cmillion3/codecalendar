@@ -4,13 +4,54 @@
 //
 
 import SwiftUI
+import SwiftData
+import UniformTypeIdentifiers
+import UserNotifications
+
+// MARK: - Import Strategy
+enum ImportStrategy {
+    case merge
+    case replace
+}
 
 struct SettingsView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
+
     @AppStorage("isDarkMode") private var isDarkMode = false
-    @AppStorage("reminderTime") private var reminderTime = 24 // hours before
     @AppStorage("enableOverdueAlerts") private var enableOverdueAlerts = true
-    @AppStorage("enableWeeklyReports") private var enableWeeklyReports = false
+    @AppStorage("userName") private var userName = ""
     
+    @Query private var tasks: [Task]
+
+    @State private var showingExportSheet = false
+    @State private var showingImportPicker = false
+    @State private var showingImportOptions = false
+    @State private var showingDeleteAlert = false
+    @State private var showingClearAlert = false
+    @State private var showingSuccessAlert = false
+    @State private var showingErrorAlert = false
+    @State private var errorMessage = ""
+    @State private var exportURL: URL?
+    @State private var importURL: URL?
+
+    @StateObject private var dataManager: DataManager
+
+    init() {
+        let container = try! ModelContainer(for: Project.self, Task.self)
+        let context = ModelContext(container)
+        _dataManager = StateObject(wrappedValue: DataManager(modelContext: context))
+    }
+
+    // MARK: - Computed property for export document
+    private var exportDocument: ExportDocument {
+        if let url = exportURL, let data = try? Data(contentsOf: url) {
+            return ExportDocument(data: data)
+        } else {
+            return ExportDocument(data: Data())
+        }
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -21,47 +62,103 @@ struct SettingsView: View {
                         AccentColorPickerView()
                     }
                 }
-                
-                // Notifications Section
+
+                // MARK: - Notifications (SIMPLIFIED)
                 Section("Notifications") {
-                    Toggle("Task Reminders", isOn: $enableOverdueAlerts)
+                    Toggle("Enable Task Reminders", isOn: $enableOverdueAlerts)
+                        .onChange(of: enableOverdueAlerts) { _, newValue in
+                            if newValue {
+                                NotificationManager.shared.requestPermission { granted in
+                                    if granted {
+                                        // Reschedule all tasks
+                                        for task in tasks {
+                                            NotificationManager.shared.scheduleTaskReminders(for: task)
+                                        }
+                                    }
+                                }
+                            } else {
+                                NotificationManager.shared.cancelAll()
+                            }
+                        }
                     
                     if enableOverdueAlerts {
-                        Picker("Remind Before", selection: $reminderTime) {
-                            Text("1 hour").tag(1)
-                            Text("6 hours").tag(6)
-                            Text("12 hours").tag(12)
-                            Text("24 hours").tag(24)
-                            Text("2 days").tag(48)
+                        Text("You'll get reminders at: 7 days, 3 days, 1 day, and day of at 9 AM")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                // Profile Section
+                Section("Profile") {
+                    HStack {
+                        Text("Display Name")
+                        Spacer()
+                        TextField("Your name", text: $userName)
+                            .multilineTextAlignment(.trailing)
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                // Onboarding Section
+                Section("Onboarding") {
+                    Button("Show Onboarding Again") {
+                        UserDefaults.standard.set(false, forKey: "hasCompletedOnboarding")
+                    }
+                    .foregroundColor(.blue)
+                }
+
+                // MARK: - Data Management
+                Section("Data Management") {
+                    Button {
+                        exportData()
+                    } label: {
+                        HStack {
+                            Label("Export Data", systemImage: "square.and.arrow.up")
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
                     }
-                    
-                    Toggle("Weekly Progress Reports", isOn: $enableWeeklyReports)
-                    NavigationLink("Notification Schedule") {
-                        NotificationScheduleView()
+
+                    Button {
+                        showingImportPicker = true
+                    } label: {
+                        HStack {
+                            Label("Import Data", systemImage: "square.and.arrow.down")
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
+                    Button {
+                        showingClearAlert = true
+                    } label: {
+                        HStack {
+                            Label("Clear Completed Tasks", systemImage: "checkmark.circle.badge.xmark")
+                                .foregroundColor(.orange)
+                            Spacer()
+                        }
+                    }
+
+                    Button(role: .destructive) {
+                        showingDeleteAlert = true
+                    } label: {
+                        HStack {
+                            Label("Delete All Data", systemImage: "trash")
+                            Spacer()
+                        }
                     }
                 }
-                
-                // Data Management
-                Section("Data") {
-                    NavigationLink("Backup & Export") {
-                        BackupView()
-                    }
-                    NavigationLink("Privacy Settings") {
-                        PrivacyView()
-                    }
-                    Button("Clear Completed Tasks") {
-                        // Action
-                    }
-                    .foregroundColor(.red)
-                }
-                
+
                 // About
                 Section {
                     NavigationLink("Help & Tutorial") {
                         TutorialView()
                     }
-                    NavigationLink("About DevDash") {
+                    NavigationLink("About Codecalendar") {
                         AboutView()
                     }
                     Link("Rate on App Store", destination: URL(string: "https://apps.apple.com")!)
@@ -69,16 +166,147 @@ struct SettingsView: View {
             }
             .navigationTitle("Settings")
             .preferredColorScheme(isDarkMode ? .dark : .light)
+            .fileExporter(
+                isPresented: $showingExportSheet,
+                document: exportDocument,
+                contentType: .codecalendarData,
+                defaultFilename: "Codecalendar_Backup"
+            ) { result in
+                switch result {
+                case .success:
+                    showSuccess(message: "Data exported successfully!")
+                case .failure(let error):
+                    showError(message: "Export failed: \(error.localizedDescription)")
+                }
+            }
+            .fileImporter(
+                isPresented: $showingImportPicker,
+                allowedContentTypes: [.codecalendarData, .json],
+                allowsMultipleSelection: false
+            ) { result in
+                switch result {
+                case .success(let urls):
+                    guard let url = urls.first else { return }
+                    importURL = url
+                    showingImportOptions = true
+                case .failure(let error):
+                    showError(message: "Import failed: \(error.localizedDescription)")
+                }
+            }
+            .alert("Import Options", isPresented: $showingImportOptions) {
+                Button("Merge with existing") {
+                    importData(strategy: .merge)
+                }
+                Button("Replace all data", role: .destructive) {
+                    importData(strategy: .replace)
+                }
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("How would you like to import this data?")
+            }
+            .alert("Clear Completed Tasks", isPresented: $showingClearAlert) {
+                Button("Cancel", role: .cancel) { }
+                Button("Clear", role: .destructive) {
+                    clearCompletedTasks()
+                }
+            } message: {
+                Text("This will permanently delete all completed tasks. This action cannot be undone.")
+            }
+            .alert("Delete All Data", isPresented: $showingDeleteAlert) {
+                Button("Cancel", role: .cancel) { }
+                Button("Delete", role: .destructive) {
+                    deleteAllData()
+                }
+            } message: {
+                Text("This will permanently delete all projects and tasks. This action cannot be undone.")
+            }
+            .alert("Success", isPresented: $showingSuccessAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(successMessage)
+            }
+            .alert("Error", isPresented: $showingErrorAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(errorMessage)
+            }
+            .onAppear {
+                dataManager.modelContext = modelContext
+            }
         }
+    }
+
+    // MARK: - Data Management Methods
+    @State private var successMessage = ""
+
+    private func exportData() {
+        do {
+            let data = try dataManager.exportData()
+            if let url = dataManager.saveExportToFile(data: data) {
+                exportURL = url
+                showingExportSheet = true
+            } else {
+                showError(message: "Failed to create export file")
+            }
+        } catch {
+            showError(message: "Export failed: \(error.localizedDescription)")
+        }
+    }
+
+    private func importData(strategy: ImportStrategy) {
+        guard let url = importURL else { return }
+
+        guard url.startAccessingSecurityScopedResource() else {
+            showError(message: "Cannot access the selected file")
+            return
+        }
+        defer { url.stopAccessingSecurityScopedResource() }
+
+        do {
+            if strategy == .replace {
+                try dataManager.deleteAllData()
+            }
+            try dataManager.importData(from: url)
+            showSuccess(message: "Data imported successfully!")
+        } catch {
+            showError(message: "Import failed: \(error.localizedDescription)")
+        }
+    }
+
+    private func clearCompletedTasks() {
+        do {
+            try dataManager.clearCompletedTasks()
+            showSuccess(message: "Completed tasks cleared successfully!")
+        } catch {
+            showError(message: "Failed to clear tasks: \(error.localizedDescription)")
+        }
+    }
+
+    private func deleteAllData() {
+        do {
+            try dataManager.deleteAllData()
+            showSuccess(message: "All data deleted successfully!")
+        } catch {
+            showError(message: "Failed to delete data: \(error.localizedDescription)")
+        }
+    }
+
+    private func showSuccess(message: String) {
+        successMessage = message
+        showingSuccessAlert = true
+    }
+
+    private func showError(message: String) {
+        errorMessage = message
+        showingErrorAlert = true
     }
 }
 
-// MARK: - Supporting Views
-
+// MARK: - Supporting Views (keep these)
 struct AccentColorPickerView: View {
     @AppStorage("accentColor") private var accentColor = "blue"
-    let colors = ["blue", "green", "orange", "purple", "red", "teal"]
-    
+    let colors = ["blue", "green", "orange", "purple", "red", "teal", "indigo", "mint", "pink", "yellow"]
+
     var body: some View {
         Form {
             Section("Choose Accent Color") {
@@ -87,11 +315,11 @@ struct AccentColorPickerView: View {
                         Circle()
                             .fill(colorFromString(color))
                             .frame(width: 24, height: 24)
-                        
+
                         Text(color.capitalized)
-                        
+
                         Spacer()
-                        
+
                         if accentColor == color {
                             Image(systemName: "checkmark")
                                 .foregroundColor(colorFromString(color))
@@ -106,7 +334,7 @@ struct AccentColorPickerView: View {
         }
         .navigationTitle("Accent Color")
     }
-    
+
     private func colorFromString(_ color: String) -> Color {
         switch color {
         case "blue": return .blue
@@ -115,82 +343,19 @@ struct AccentColorPickerView: View {
         case "purple": return .purple
         case "red": return .red
         case "teal": return .teal
+        case "indigo": return .indigo
+        case "mint": return .mint
+        case "pink": return Color(red: 255/255, green: 124/255, blue: 190/255)
+        case "yellow": return .yellow
         default: return .blue
         }
     }
 }
 
-struct NotificationScheduleView: View {
-    @AppStorage("quietHoursStart") private var quietHoursStart = 22 // 10 PM
-    @AppStorage("quietHoursEnd") private var quietHoursEnd = 8 // 8 AM
-    @AppStorage("enableQuietHours") private var enableQuietHours = false
-    
-    var body: some View {
-        Form {
-            Toggle("Enable Quiet Hours", isOn: $enableQuietHours)
-            
-            if enableQuietHours {
-                DatePicker("Quiet Hours Start",
-                          selection: Binding(
-                            get: { dateFromHour(quietHoursStart) },
-                            set: { quietHoursStart = hourFromDate($0) }
-                          ),
-                          displayedComponents: .hourAndMinute)
-                
-                DatePicker("Quiet Hours End",
-                          selection: Binding(
-                            get: { dateFromHour(quietHoursEnd) },
-                            set: { quietHoursEnd = hourFromDate($0) }
-                          ),
-                          displayedComponents: .hourAndMinute)
-            }
-            
-            Section("Notification Types") {
-                Toggle("Due Date Reminders", isOn: .constant(true))
-                Toggle("Overdue Alerts", isOn: .constant(true))
-                Toggle("Project Progress", isOn: .constant(true))
-            }
-        }
-        .navigationTitle("Notification Schedule")
-    }
-    
-    private func dateFromHour(_ hour: Int) -> Date {
-        var components = Calendar.current.dateComponents([.year, .month, .day], from: Date())
-        components.hour = hour
-        components.minute = 0
-        return Calendar.current.date(from: components) ?? Date()
-    }
-    
-    private func hourFromDate(_ date: Date) -> Int {
-        Calendar.current.component(.hour, from: date)
-    }
-}
-
-struct BackupView: View {
-    var body: some View {
-        Form {
-            Section("Backup") {
-                Button("Export All Data") {
-                    // Export logic
-                }
-                Button("Create Backup") {
-                    // Backup logic
-                }
-            }
-            
-            Section("Import") {
-                Button("Import from Backup") {
-                    // Import logic
-                }
-            }
-        }
-        .navigationTitle("Backup & Export")
-    }
-}
-
+// MARK: - Keep these existing views
 struct PrivacyView: View {
     @AppStorage("analyticsEnabled") private var analyticsEnabled = true
-    
+
     var body: some View {
         Form {
             Section("Analytics") {
@@ -199,7 +364,7 @@ struct PrivacyView: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
-            
+
             Section("Data") {
                 NavigationLink("View Collected Data") {
                     Text("Data summary here")
@@ -221,25 +386,25 @@ struct TutorialView: View {
                 Text("Getting Started")
                     .font(.title)
                     .bold()
-                
+
                 VStack(alignment: .leading, spacing: 12) {
                     Label("1. Create Projects", systemImage: "folder.badge.plus")
                         .font(.headline)
                     Text("Organize your work into projects with due dates and details.")
                         .foregroundColor(.secondary)
-                    
+
                     Label("2. Add Tasks", systemImage: "checklist")
                         .font(.headline)
                         .padding(.top, 8)
                     Text("Break down projects into manageable tasks with effort scores.")
                         .foregroundColor(.secondary)
-                    
+
                     Label("3. Track Progress", systemImage: "chart.line.uptrend.xyaxis")
                         .font(.headline)
                         .padding(.top, 8)
                     Text("Use the Dashboard to monitor your completion rates and deadlines.")
                         .foregroundColor(.secondary)
-                    
+
                     Label("4. Stay Organized", systemImage: "star.fill")
                         .font(.headline)
                         .padding(.top, 8)
@@ -271,14 +436,14 @@ struct AboutView: View {
                         .foregroundColor(.secondary)
                 }
             }
-            
+
             Section("Developer") {
                 Label("Created by Cameron", systemImage: "person.fill")
                 Link("Visit Website", destination: URL(string: "https://example.com")!)
             }
-            
+
             Section("Open Source") {
-                Text("DevDash is built with SwiftUI and SwiftData")
+                Text("Codecalendar is built with SwiftUI and SwiftData")
                     .font(.caption)
                     .foregroundColor(.secondary)
                 Link("View on GitHub", destination: URL(string: "https://github.com")!)

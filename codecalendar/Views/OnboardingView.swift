@@ -2,6 +2,8 @@
 //  OnboardingView.swift
 //  codecalendar
 //
+//  Created by Cameron on 12/26/25.
+//
 
 import SwiftUI
 
@@ -22,7 +24,9 @@ struct OnboardingView: View {
         ("red", "Red", Color.red),
         ("teal", "Teal", Color.teal),
         ("indigo", "Indigo", Color.indigo),
-        ("mint", "Mint", Color.mint)
+        ("mint", "Mint", Color.mint),
+        ("pink", "Pink", Color(red: 255/255, green: 124/255, blue: 190/255)),
+        ("yellow", "Yellow", Color.yellow)
     ]
     
     var body: some View {
@@ -31,7 +35,7 @@ struct OnboardingView: View {
             LinearGradient(
                 gradient: Gradient(colors: [
                     colorFromString(tempColor).opacity(0.1),
-                    .white
+                    colorFromString(tempColor)
                 ]),
                 startPoint: .top,
                 endPoint: .bottom
@@ -107,7 +111,7 @@ struct OnboardingView: View {
                 .foregroundColor(colorFromString(tempColor))
             
             VStack(spacing: 16) {
-                Text("Welcome to DevDash")
+                Text("Welcome to Codecalendar")
                     .font(.largeTitle)
                     .fontWeight(.bold)
                     .multilineTextAlignment(.center)
@@ -248,6 +252,8 @@ struct OnboardingView: View {
         case "teal": return .teal
         case "indigo": return .indigo
         case "mint": return .mint
+        case "pink": return Color(red: 255/255, green: 124/255, blue: 190/255)
+        case "yellow": return .yellow
         default: return .blue
         }
     }

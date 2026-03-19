@@ -2,19 +2,17 @@
 //  DashboardView.swift
 //  codecalendar
 //
-//  Created by Cameron on 12/22/25.
-//
 
 import SwiftUI
 import SwiftData
 
 struct DashboardView: View {
     @Environment(\.modelContext) private var modelContext
+    @AppStorage("isDarkMode") private var isDarkMode = false
 
     @Query(sort: \Project.createdDate, order: .reverse) private var projects: [Project]
     @Query(sort: \Task.dueDate) private var tasks: [Task]
     
-    // State variables for sheet presentation
     @State private var showingCreateProject = false
     @State private var showingCreateTask = false
     
@@ -23,7 +21,6 @@ struct DashboardView: View {
     @Query(sort: \Task.completedDate, order: .reverse)
     private var recentlyCompletedTasks: [Task]
     
-    // Stats
     private var activeProjects: Int { projects.filter { !$0.complete }.count }
     private var totalTasks: Int { tasks.count }
     private var overdueCount: Int { overdueTasks.count }
@@ -32,72 +29,82 @@ struct DashboardView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 24) {
-                    // MARK: Stats Cards
-                    statsCardsSection
+                    // Welcome header
+                    welcomeHeader
                     
-                    // MARK: Quick Actions
+                    // Stats Grid
+                    statsGrid
+                    
+                    // Quick Actions
                     quickActionsSection
                     
-                    // MARK: Recent Activity
+                    // Recent Activity
                     recentActivitySection
                 }
-                .padding()
+                .padding(.horizontal)
+                .padding(.top, 8)
+                .padding(.bottom, 24)
             }
+            .background(Color(.systemGroupedBackground).ignoresSafeArea())
             .navigationTitle("Dashboard")
             .navigationBarTitleDisplayMode(.large)
-            // Add sheets for creating tasks and projects
-            .sheet(isPresented: $showingCreateProject) {
-                CreateProjectView()
-            }
-            .sheet(isPresented: $showingCreateTask) {
-                CreateTaskView(projects: projects)
-            }
+            .sheet(isPresented: $showingCreateProject) { CreateProjectView() }
+            .sheet(isPresented: $showingCreateTask) { CreateTaskView(projects: projects) }
         }
     }
     
-    // MARK: - Stats Cards
-    private var statsCardsSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Overview")
+    // MARK: - Welcome Header
+    private var welcomeHeader: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Welcome back")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+            
+            Text("Your productivity dashboard")
                 .font(.title2)
                 .fontWeight(.semibold)
+                .foregroundColor(.primary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.bottom, 8)
+    }
+    
+    // MARK: - Stats Grid
+    private var statsGrid: some View {
+        LazyVGrid(columns: [
+            GridItem(.flexible()),
+            GridItem(.flexible()),
+            GridItem(.flexible())
+        ], spacing: 16) {
+            StatCard(
+                title: "Active Projects",
+                value: "\(activeProjects)",
+                icon: "folder.badge.gear",
+                color: .blue
+            )
             
-            HStack(spacing: 16) {
-                StatCard(
-                    title: "Active Projects",
-                    value: "\(activeProjects)",
-                    icon: "folder.badge.gear",
-                    color: .blue
-                )
-                .frame(maxWidth: .infinity)
-                
-                StatCard(
-                    title: "Total Tasks",
-                    value: "\(totalTasks)",
-                    icon: "checklist",
-                    color: .indigo
-                )
-                .frame(maxWidth: .infinity)
-                
-                StatCard(
-                    title: "Overdue",
-                    value: "\(overdueCount)",
-                    icon: "exclamationmark.triangle.fill",
-                    color: .red
-                )
-                .frame(maxWidth: .infinity)
-            }
+            StatCard(
+                title: "Total Tasks",
+                value: "\(totalTasks)",
+                icon: "checklist",
+                color: .indigo
+            )
+            
+            StatCard(
+                title: "Overdue",
+                value: "\(overdueCount)",
+                icon: "exclamationmark.triangle.fill",
+                color: .red
+            )
         }
     }
     
     // MARK: - Quick Actions
     private var quickActionsSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Quick Actions")
-                .font(.title2)
-                .fontWeight(.semibold)
+            sectionHeader(title: "Quick Actions", systemImage: "bolt.fill")
             
-            VStack(spacing: 10) {
+            HStack(spacing: 12) {
                 QuickActionButton(
                     title: "New Project",
                     icon: "plus.circle.fill",
@@ -115,7 +122,7 @@ struct DashboardView: View {
                 }
                 
                 QuickActionButton(
-                    title: "Mark all Overdue Tasks as Complete",
+                    title: "Complete Overdue",
                     icon: "flag.fill",
                     color: .orange
                 ) {
@@ -128,27 +135,60 @@ struct DashboardView: View {
     // MARK: - Recent Activity
     private var recentActivitySection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Recent Activity")
-                .font(.title2)
-                .fontWeight(.semibold)
+            sectionHeader(title: "Recent Activity", systemImage: "clock.fill")
             
             if recentlyCompletedTasks.isEmpty {
-                VStack(spacing: 8) {
-                    Image(systemName: "checkmark.circle")
-                        .font(.system(size: 60))
-                        .foregroundColor(.green.opacity(0.3))
-                    
-                    Text("No recent activity")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
+                emptyActivityView
             } else {
-                LazyVStack(spacing: 12) {
+                VStack(spacing: 12) {
                     ForEach(recentlyCompletedTasks.prefix(5)) { task in
                         ActivityRow(task: task)
                     }
                 }
             }
+        }
+    }
+    
+    private var emptyActivityView: some View {
+        VStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .fill(Color(.systemGray5))
+                    .frame(width: 80, height: 80)
+                    .overlay(
+                        Circle()
+                            .stroke(Color(.separator).opacity(0.3), lineWidth: isDarkMode ? 0.5 : 0)
+                    )
+                
+                Image(systemName: "checkmark.circle")
+                    .font(.title)
+                    .foregroundColor(.secondary)
+            }
+            
+            Text("No recent activity")
+                .font(.body)
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 40)
+        .background(
+            RoundedRectangle(cornerRadius: 24)
+                .fill(Color(.systemBackground))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24)
+                        .stroke(Color(.separator).opacity(0.3), lineWidth: isDarkMode ? 0.5 : 0)
+                )
+        )
+    }
+    
+    // MARK: - Helper Views
+    private func sectionHeader(title: String, systemImage: String) -> some View {
+        HStack {
+            Label(title, systemImage: systemImage)
+                .font(.headline)
+                .foregroundColor(.primary)
+            
+            Spacer()
         }
     }
     
@@ -159,7 +199,6 @@ struct DashboardView: View {
             task.completedDate = Date()
         }
         
-        // Save changes
         do {
             try modelContext.save()
         } catch {
@@ -168,86 +207,136 @@ struct DashboardView: View {
     }
 }
 
-// MARK: - Components
+// MARK: - Stat Card Component
 struct StatCard: View {
     let title: String
     let value: String
     let icon: String
     let color: Color
+    @AppStorage("isDarkMode") private var isDarkMode = false
     
     var body: some View {
-        VStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundColor(color)
-                .frame(width: 44, height: 44)
-                .background(color.opacity(0.1))
-                .clipShape(Circle())
+        VStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.12))
+                    .frame(width: 48, height: 48)
+                    .overlay(
+                        Circle()
+                            .stroke(color.opacity(0.3), lineWidth: isDarkMode ? 0.5 : 0)
+                    )
+                
+                Image(systemName: icon)
+                    .font(.title3)
+                    .foregroundColor(color)
+            }
             
-            Text(value)
-                .font(.title)
-                .fontWeight(.bold)
-                .foregroundColor(.primary)
-            
-            Text(title)
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
+            VStack(spacing: 4) {
+                Text(value)
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundColor(.primary)
+                
+                Text(title)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+            }
         }
         .frame(maxWidth: .infinity)
-        .padding()
-        .background(Color(.systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .shadow(color: .black.opacity(0.05), radius: 10)
+        .padding(.vertical, 20)
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(Color(.systemBackground))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20)
+                        .stroke(Color(.separator).opacity(0.3), lineWidth: isDarkMode ? 0.5 : 0)
+                )
+        )
+        .shadow(color: isDarkMode ? .clear : Color.black.opacity(0.03), radius: 8, x: 0, y: 4)
     }
 }
 
+// MARK: - Quick Action Button
 struct QuickActionButton: View {
     let title: String
     let icon: String
     let color: Color
     let action: () -> Void
+    @AppStorage("isDarkMode") private var isDarkMode = false
     
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 8) {
-                Image(systemName: icon)
-                    .font(.title3)
-                    .foregroundColor(color)
+            VStack(spacing: 8) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(color.opacity(0.1))
+                        .frame(width: 44, height: 44)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(color.opacity(0.3), lineWidth: isDarkMode ? 0.5 : 0)
+                        )
+                    
+                    Image(systemName: icon)
+                        .font(.title3)
+                        .foregroundColor(color)
+                }
                 
                 Text(title)
-                    .font(.subheadline)
+                    .font(.caption)
                     .fontWeight(.medium)
                     .foregroundColor(.primary)
-                
-                Spacer()
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .frame(height: 32)
             }
-            .padding(.horizontal, 16)
+            .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
-            .background(Color(.systemGray6))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .padding(.horizontal, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color(.systemBackground))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(Color(.separator).opacity(0.3), lineWidth: isDarkMode ? 0.5 : 0)
+                    )
+            )
+            .shadow(color: isDarkMode ? .clear : Color.black.opacity(0.03), radius: 4, x: 0, y: 2)
         }
     }
 }
 
+// MARK: - Activity Row
 struct ActivityRow: View {
     let task: Task
+    @AppStorage("isDarkMode") private var isDarkMode = false
     
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.title3)
-                .foregroundColor(.green)
+        HStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .fill(Color.green.opacity(0.1))
+                    .frame(width: 40, height: 40)
+                    .overlay(
+                        Circle()
+                            .stroke(Color.green.opacity(0.3), lineWidth: isDarkMode ? 0.5 : 0)
+                    )
+                
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.title3)
+                    .foregroundColor(.green)
+            }
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(task.name)
                     .font(.headline)
+                    .foregroundColor(.primary)
                     .lineLimit(1)
                 
                 Text(task.details)
                     .font(.subheadline)
                     .foregroundColor(.secondary)
-                    .lineLimit(2)
+                    .lineLimit(1)
             }
             
             Spacer()
@@ -257,8 +346,15 @@ struct ActivityRow: View {
                 .foregroundColor(.secondary)
         }
         .padding()
-        .background(Color(.systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.systemBackground))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(Color(.separator).opacity(0.3), lineWidth: isDarkMode ? 0.5 : 0)
+                )
+        )
+        .shadow(color: isDarkMode ? .clear : Color.black.opacity(0.02), radius: 4, x: 0, y: 2)
     }
 }
 
