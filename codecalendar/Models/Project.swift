@@ -29,4 +29,40 @@ final class Project {
         self.complete = complete
         self.starred = starred
     }
+    
+    // Computed property to check if all tasks are completed
+    var allTasksCompleted: Bool {
+        guard !tasks.isEmpty else { return false }
+        return tasks.allSatisfy { $0.completed }
+    }
+    
+    // Update project completion status based on tasks
+    func updateCompletionFromTasks() {
+        let newCompletionStatus = allTasksCompleted
+        if complete != newCompletionStatus {
+            complete = newCompletionStatus
+        }
+    }
+    
+    // Mark all tasks as completed
+    func completeAllTasks() {
+        for task in tasks {
+            if !task.completed {
+                task.completed = true
+                task.completedDate = Date()
+            }
+        }
+        complete = true
+    }
+    
+    // Mark all tasks as incomplete
+    func uncompleteAllTasks() {
+        for task in tasks {
+            if task.completed {
+                task.completed = false
+                task.completedDate = nil
+            }
+        }
+        complete = false
+    }
 }

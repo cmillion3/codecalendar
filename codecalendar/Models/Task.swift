@@ -39,6 +39,10 @@ extension Task {
         } else {
             task.completedDate = nil
         }
+        
+        // Update the associated project's completion status
+        if let project = task.project {
+            project.updateCompletionFromTasks()
+        }
     }
 }
-

@@ -6,7 +6,7 @@
 import SwiftUI
 import SwiftData
 import UniformTypeIdentifiers
-import UserNotifications
+
 
 // MARK: - Import Strategy
 enum ImportStrategy {
@@ -19,7 +19,6 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
 
     @AppStorage("isDarkMode") private var isDarkMode = false
-    @AppStorage("enableOverdueAlerts") private var enableOverdueAlerts = true
     @AppStorage("userName") private var userName = ""
     
     @Query private var tasks: [Task]
@@ -62,43 +61,7 @@ struct SettingsView: View {
                         AccentColorPickerView()
                     }
                 }
-
-                // MARK: - Notifications (SIMPLIFIED)
-                Section("Notifications") {
-                    Toggle("Enable Task Reminders", isOn: $enableOverdueAlerts)
-                        .onChange(of: enableOverdueAlerts) { _, newValue in
-                            if newValue {
-                                NotificationManager.shared.requestPermission { granted in
-                                    if granted {
-                                        // Reschedule all tasks
-                                        for task in tasks {
-                                            NotificationManager.shared.scheduleTaskReminders(for: task)
-                                        }
-                                    }
-                                }
-                            } else {
-                                NotificationManager.shared.cancelAll()
-                            }
-                        }
-                    
-                    if enableOverdueAlerts {
-                        Text("You'll get reminders at: 7 days, 3 days, 1 day, and day of at 9 AM")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-
-                // Profile Section
-                Section("Profile") {
-                    HStack {
-                        Text("Display Name")
-                        Spacer()
-                        TextField("Your name", text: $userName)
-                            .multilineTextAlignment(.trailing)
-                            .foregroundColor(.secondary)
-                    }
-                }
-
+                
                 // Onboarding Section
                 Section("Onboarding") {
                     Button("Show Onboarding Again") {

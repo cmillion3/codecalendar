@@ -84,6 +84,32 @@ struct ProjectsView: View {
         }
     }
     
+    // MARK: - Helper Functions for Links
+    private func attributedDescription(_ text: String) -> AttributedString {
+        var attributedString = AttributedString(text)
+        
+        let pattern = "https?://[^\\s]+"
+        guard let regex = try? NSRegularExpression(pattern: pattern) else {
+            return attributedString
+        }
+        
+        let nsString = text as NSString
+        let matches = regex.matches(in: text, range: NSRange(location: 0, length: nsString.length))
+        
+        for match in matches.reversed() {
+            let urlString = nsString.substring(with: match.range)
+            if let url = URL(string: urlString) {
+                let range = Range(match.range, in: text)!
+                let attributedRange = AttributedString(text).range(of: urlString)!
+                attributedString[attributedRange].link = url
+                attributedString[attributedRange].foregroundColor = .accentColor
+                attributedString[attributedRange].underlineStyle = .single
+            }
+        }
+        
+        return attributedString
+    }
+    
     // MARK: - Project Header
     private var projectHeader: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -439,13 +465,6 @@ struct ProjectsView: View {
                 // Checkbox
                 Button {
                     Task.toggleCompleted(task)
-                    if task.completed {
-                        NotificationManager.shared.cancelReminders(for: task)
-                    } else {
-                        if UserDefaults.standard.bool(forKey: "enableOverdueAlerts") {
-                            NotificationManager.shared.scheduleTaskReminders(for: task)
-                        }
-                    }
                 } label: {
                     ZStack {
                         Circle()
@@ -495,11 +514,13 @@ struct ProjectsView: View {
                         )
                     }
                     
+                    // Task description with clickable links
                     if !task.details.isEmpty {
-                        Text(task.details)
+                        Text(attributedDescription(task.details))
                             .font(.caption)
                             .foregroundColor(.secondary)
-                            .lineLimit(1)
+                            .lineLimit(2)
+                            .textSelection(.enabled)
                     }
                     
                     // Due date and project
