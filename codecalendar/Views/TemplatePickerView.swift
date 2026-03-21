@@ -160,13 +160,6 @@ struct TemplatePickerView: View {
         // Save context
         try? modelContext.save()
         
-        // Schedule notifications if enabled
-        if UserDefaults.standard.bool(forKey: "enableOverdueAlerts") {
-            for task in project.tasks {
-                NotificationManager.shared.scheduleTaskReminders(for: task)
-            }
-        }
-        
         dismiss()
     }
     

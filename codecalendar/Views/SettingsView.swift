@@ -395,21 +395,21 @@ struct AboutView: View {
                 HStack {
                     Text("Build")
                     Spacer()
-                    Text("100")
+                    Text("1")
                         .foregroundColor(.secondary)
                 }
             }
 
             Section("Developer") {
                 Label("Created by Cameron", systemImage: "person.fill")
-                Link("Visit Website", destination: URL(string: "https://example.com")!)
+                Link("Visit Website", destination: URL(string: "https://github.com/cmillion3/")!)
             }
 
             Section("Open Source") {
                 Text("Codecalendar is built with SwiftUI and SwiftData")
                     .font(.caption)
                     .foregroundColor(.secondary)
-                Link("View on GitHub", destination: URL(string: "https://github.com")!)
+                Link("View on GitHub", destination: URL(string: "https://github.com/cmillion3/codecalendar")!)
             }
         }
         .navigationTitle("About")

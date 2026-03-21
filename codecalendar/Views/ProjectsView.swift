@@ -81,6 +81,12 @@ struct ProjectsView: View {
                     selectedProject = projects.first
                 }
             }
+            .onChange(of: projects.count) { _, _ in
+                // If the selected project is no longer in the list, reset it
+                if let selected = selectedProject, !projects.contains(where: { $0.id == selected.id }) {
+                    selectedProject = projects.first
+                }
+            }
         }
     }
     

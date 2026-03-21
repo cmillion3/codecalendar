@@ -18,10 +18,17 @@ struct HomeView: View {
     @State private var selectedTasklist = "Due Soon"
     let projectTasklist = ["Due Soon", "Overdue"]
     
+    
     @State private var showingCreateProject = false
     @State private var showingCreateTask = false
     @State private var showingTemplatePicker = false
     @State private var selectedProgressProject: Project? = nil
+    
+    private var forceRefresh: Bool {
+        // This forces SwiftUI to reevaluate when projects count changes
+        _ = projects.count
+        return true
+    }
     
     // MARK: - Computed Properties (unchanged)
     private var displayedProjects: [Project] {
@@ -80,6 +87,12 @@ struct HomeView: View {
             .sheet(isPresented: $showingTemplatePicker) { TemplatePickerView() }
             .onAppear {
                 if selectedProgressProject == nil {
+                    selectedProgressProject = projects.first
+                }
+            }
+            .onChange(of: projects.count) { _, _ in
+                // If the selected project is no longer in the list, reset it
+                if let selected = selectedProgressProject, !projects.contains(where: { $0.id == selected.id }) {
                     selectedProgressProject = projects.first
                 }
             }
@@ -468,8 +481,7 @@ struct HomeView: View {
                     
                     if displayedTasks.count > 5 {
                         NavigationLink {
-                            // Full tasks view
-                            Text("All Tasks")
+                            TaskView()
                         } label: {
                             Text("See All (\(displayedTasks.count))")
                                 .font(.subheadline)

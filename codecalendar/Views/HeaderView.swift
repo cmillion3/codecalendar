@@ -19,7 +19,7 @@ struct HeaderView: View {
         HStack {
             Spacer()
             VStack(spacing: 6) {
-                Text("Code Calender")
+                Text("Code Calendar")
                     .font(.system(.largeTitle, design: .serif))
                     .italic()
                     .fontWeight(.bold)

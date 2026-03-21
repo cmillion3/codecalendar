@@ -5,14 +5,6 @@
 //  Created by Cameron on 3/19/26.
 //
 
-
-//
-//  ProjectTemplateManager.swift
-//  codecalendar
-//
-//  Created by Cameron on 3/19/26.
-//
-
 import Foundation
 import SwiftData
 

@@ -74,7 +74,7 @@ struct EditProjectView: View {
                 }
             }
         }
-        .navigationTitle("Edit Project")
+        .navigationTitle("Edit")
         .alert(pendingCompletionState ? "Complete All Tasks?" : "Uncomplete All Tasks?", isPresented: $showingConfirmation) {
             Button("Cancel", role: .cancel) {
                 // Reset the toggle
